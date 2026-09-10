@@ -1,0 +1,35 @@
+{
+  "version": "1.0.0",
+  "name": "node-backend",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js",
+    "dev": "nodemon index.js",
+    "test": "mocha \"tests/**/*.test.js\" --exit --timeout 30000"
+  },
+  "dependencies": {
+    "axios": "^1.19.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.31.0",
+    "mongoose": "^7.8.12",
+    "nodemailer": "^9.0.5",
+    "razorpay": "^2.9.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.5.4",
+    "mocha": "^11.0.0",
+    "nodemon": "^3.0.0",
+    "postcss": "^8.5.25",
+    "supertest": "^7.0.0",
+    "tailwindcss": "^3.4.19"
+  }
+}
