@@ -35,7 +35,7 @@ export default function VerifyOtp() {
         headers: { Authorization: `Bearer ${firebaseIdToken}` },
       });
 
-      setSuccess(result.message || "OTP verified successfully.");
+      setSuccess(result.message || "Email verified successfully.");
       setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
       setError(err.message || "OTP verification failed");

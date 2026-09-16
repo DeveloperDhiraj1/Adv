@@ -10,7 +10,6 @@ import connectDB from './config/db.js';
 const PORT = process.env.PORT || 8081;
 
 console.log("MONGO_URI exists:", !!process.env.MONGO_URI);
-console.log("MONGO_URI:", process.env.MONGO_URI);
 console.log("PORT:", PORT);
 
 const startServer = async () => {
