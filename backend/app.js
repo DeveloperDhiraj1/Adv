@@ -22,10 +22,34 @@ import adminFilterRoutes from './routes/adminFilterRoutes.js';
 
 const app = express();
 
+const fixedAllowedOrigins = [
+  'https://adv-iota-nine.vercel.app',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+];
+
+const configuredOrigins = (process.env.FRONTEND_URLS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (fixedAllowedOrigins.includes(origin) || configuredOrigins.includes(origin)) return true;
+
+  // Allow this project's Vercel preview deployments, e.g. adv-<hash>-<team>.vercel.app.
+  return /^https:\/\/adv-[a-z0-9-]+\.vercel\.app$/i.test(origin);
+};
+
 app.use(helmet());
 app.use(
   cors({
-    origin: ["https://adv-iota-nine.vercel.app", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) return callback(null, true);
+      return callback(new Error(`CORS origin is not allowed: ${origin}`));
+    },
     credentials: true,
   })
 );
