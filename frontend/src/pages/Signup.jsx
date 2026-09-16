@@ -6,7 +6,7 @@ import Button from "../components/Button";
 import { signupSideImage } from "../assets/images";
 import { apiFetch } from "../lib/api";
 import { firebaseAuth } from "../lib/firebase";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 export default function Signup() {
   const [type, setType] = useState("advice");
@@ -64,6 +64,31 @@ export default function Signup() {
         ? "This email is already registered. Please log in."
         : err.message || "Signup failed";
       setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const credential = await signInWithPopup(firebaseAuth, new GoogleAuthProvider());
+      const result = await apiFetch("/auth/firebase-login", {
+        method: "POST",
+        body: JSON.stringify({
+          firebaseIdToken: await credential.user.getIdToken(),
+          role: type === "expert" ? "EXPERT" : "USER",
+        }),
+      });
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("userRole", result.role || "USER");
+      localStorage.setItem("userId", result.userId);
+      localStorage.setItem("userName", result.userName);
+      localStorage.setItem("userEmail", result.email);
+      navigate(result.role === "EXPERT" ? "/expert-dashboard" : "/dashboard");
+    } catch (err) {
+      setError(err.message || "Google sign-up failed");
     } finally {
       setLoading(false);
     }
@@ -133,7 +158,7 @@ export default function Signup() {
             <div className="h-px flex-1 bg-line" />
           </div>
 
-          <button className="flex w-full items-center justify-center gap-3 rounded-full border border-line py-3 text-sm font-semibold text-ink hover:bg-ink/5">
+          <button type="button" onClick={handleGoogleSignup} disabled={loading} className="flex w-full items-center justify-center gap-3 rounded-full border border-line py-3 text-sm font-semibold text-ink hover:bg-ink/5 disabled:opacity-70">
             <FcGoogle className="h-5 w-5" />
             Continue with Google
           </button>

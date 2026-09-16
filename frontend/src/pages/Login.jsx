@@ -5,6 +5,8 @@ import { HiOutlineEnvelope, HiOutlineLockClosed } from "react-icons/hi2";
 import Button from "../components/Button";
 import { loginSideImage } from "../assets/images";
 import { apiFetch } from "../lib/api";
+import { firebaseAuth } from "../lib/firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -15,6 +17,28 @@ export default function Login() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const credential = await signInWithPopup(firebaseAuth, new GoogleAuthProvider());
+      const result = await apiFetch("/auth/firebase-login", {
+        method: "POST",
+        body: JSON.stringify({ firebaseIdToken: await credential.user.getIdToken() }),
+      });
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("userRole", result.role || "USER");
+      localStorage.setItem("userId", result.userId);
+      localStorage.setItem("userName", result.userName);
+      localStorage.setItem("userEmail", result.email);
+      navigate(result.role === "EXPERT" ? "/expert-dashboard" : result.role === "ADMIN" ? "/admin" : "/dashboard");
+    } catch (err) {
+      setError(err.message || "Google sign-in failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -121,7 +145,7 @@ export default function Login() {
             <div className="h-px flex-1 bg-line" />
           </div>
 
-          <button className="flex w-full items-center justify-center gap-3 rounded-full border border-line py-3 text-sm font-semibold text-ink hover:bg-ink/5">
+          <button type="button" onClick={handleGoogleLogin} disabled={loading} className="flex w-full items-center justify-center gap-3 rounded-full border border-line py-3 text-sm font-semibold text-ink hover:bg-ink/5 disabled:opacity-70">
             <FcGoogle className="h-5 w-5" />
             Continue with Google
           </button>

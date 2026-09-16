@@ -1,6 +1,7 @@
 import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
 import { getFirebaseAdminAuth } from '../config/firebaseAdmin.js';
 
 
@@ -17,8 +18,8 @@ export const signup = async (req, res) => {
             return res.status(401).json({ success: false, message: "Invalid Firebase account" });
         }
 
-        user = await User.findOne({ email });
-        if (user) {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
             return res.status(400).json({ success: false, message: "User already exists" });
         }
 
@@ -77,6 +78,58 @@ export const verifyFirebaseEmail = async (req, res) => {
     } catch (error) {
         console.error("Firebase verification Error:", error.message);
         return res.status(401).json({ success: false, message: "Firebase verification failed" });
+    }
+};
+
+export const firebaseLogin = async (req, res) => {
+    try {
+        const { firebaseIdToken, role = 'USER' } = req.body;
+        if (!firebaseIdToken) {
+            return res.status(400).json({ success: false, message: "Firebase token is required" });
+        }
+
+        const firebaseUser = await getFirebaseAdminAuth().verifyIdToken(firebaseIdToken, true);
+        if (!firebaseUser.email || !firebaseUser.email_verified) {
+            return res.status(403).json({ success: false, message: "Please verify your Google email first" });
+        }
+
+        let user = await User.findOne({ email: firebaseUser.email.toLowerCase() });
+        if (!user) {
+            const temporaryPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+            user = await User.create({
+                name: firebaseUser.name || firebaseUser.email.split('@')[0],
+                email: firebaseUser.email,
+                password: temporaryPassword,
+                role,
+                firebaseUid: firebaseUser.uid,
+                isEmailVerified: true,
+            });
+        } else {
+            if (user.firebaseUid && user.firebaseUid !== firebaseUser.uid) {
+                return res.status(409).json({ success: false, message: "This email is linked to another account" });
+            }
+            user.firebaseUid = firebaseUser.uid;
+            user.isEmailVerified = true;
+            await user.save();
+        }
+
+        if (user.isActive === false) {
+            return res.status(403).json({ success: false, message: "Your account has been deactivated." });
+        }
+
+        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        return res.status(200).json({
+            success: true,
+            message: "Logged in successfully",
+            token,
+            role: user.role,
+            userId: user._id,
+            userName: user.name,
+            email: user.email,
+        });
+    } catch (error) {
+        console.error("Firebase Login Error:", error.message);
+        return res.status(401).json({ success: false, message: "Google sign-in failed" });
     }
 };
 
