@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
-import { HiOutlineUser, HiOutlineBriefcase } from "react-icons/hi2";
+import { HiOutlineUser, HiOutlineBriefcase, HiOutlineEye, HiOutlineEyeSlash } from "react-icons/hi2";
 import Button from "../components/Button";
 import { signupSideImage } from "../assets/images";
 import { apiFetch } from "../lib/api";
@@ -17,11 +17,23 @@ export default function Signup() {
     phone: "",
     role: "USER",
   });
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
   const googleSignupHandled = useRef(false);
+  const passwordRules = [
+    { label: "8+ characters", valid: form.password.length >= 8 },
+    { label: "Uppercase letter", valid: /[A-Z]/.test(form.password) },
+    { label: "Lowercase letter", valid: /[a-z]/.test(form.password) },
+    { label: "Number or symbol", valid: /[0-9\W]/.test(form.password) },
+  ];
+  const passwordScore = passwordRules.filter((rule) => rule.valid).length;
+  const strengthLabel = passwordScore <= 1 ? "Weak" : passwordScore <= 3 ? "Getting stronger" : "Strong";
+  const strengthColor = passwordScore <= 1 ? "bg-red-500" : passwordScore <= 3 ? "bg-amber-500" : "bg-emerald";
 
   const finishGoogleSignup = async (credential) => {
     const result = await apiFetch("/auth/firebase-login", {
@@ -66,6 +78,18 @@ export default function Signup() {
     setLoading(true);
     setError("");
     setSuccess("");
+
+    if (form.password !== confirmPassword) {
+      setError("Passwords do not match.");
+      setLoading(false);
+      return;
+    }
+
+    if (passwordScore < 4) {
+      setError("Please create a stronger password using all the requirements below.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const payload = {
@@ -152,7 +176,40 @@ export default function Signup() {
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <Input name="name" label="Full Name" placeholder="Your full name" value={form.name} onChange={handleChange} />
             <Input name="email" label="Email" type="email" placeholder="you@example.com" value={form.email} onChange={handleChange} />
-            <Input name="password" label="Password" type="password" placeholder="••••••••" value={form.password} onChange={handleChange} />
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase tracking-wide text-muted">Password</label>
+                {form.password && <span className={`text-xs font-semibold ${passwordScore <= 1 ? "text-red-600" : passwordScore <= 3 ? "text-amber-600" : "text-emerald"}`}>{strengthLabel}</span>}
+              </div>
+              <div className="relative mt-2">
+                <input name="password" type={showPassword ? "text" : "password"} required value={form.password} onChange={handleChange} placeholder="Create a strong password" className="w-full rounded-xl border border-line px-4 py-3 pr-12 text-sm focus:border-emerald focus:outline-none" />
+                <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink" aria-label={showPassword ? "Hide password" : "Show password"}>
+                  {showPassword ? <HiOutlineEyeSlash className="h-5 w-5" /> : <HiOutlineEye className="h-5 w-5" />}
+                </button>
+              </div>
+              <div className="mt-2 flex gap-1.5" aria-label={`Password strength: ${strengthLabel}`}>
+                {[0, 1, 2, 3].map((bar) => <span key={bar} className={`h-1.5 flex-1 rounded-full ${bar < passwordScore ? strengthColor : "bg-line"}`} />)}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl bg-surface px-3 py-3">
+                {passwordRules.map((rule) => (
+                  <span key={rule.label} className={`flex items-center gap-2 text-xs ${rule.valid ? "text-emerald" : "text-muted"}`}>
+                    <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${rule.valid ? "bg-emerald/15" : "bg-line"}`}>{rule.valid ? "✓" : ""}</span>
+                    {rule.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-muted">Confirm Password</label>
+              <div className="relative mt-2">
+                <input name="confirmPassword" type={showConfirmPassword ? "text" : "password"} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat your password" className={`w-full rounded-xl border px-4 py-3 pr-12 text-sm focus:outline-none ${confirmPassword && confirmPassword !== form.password ? "border-red-400 focus:border-red-500" : "border-line focus:border-emerald"}`} />
+                <button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink" aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}>
+                  {showConfirmPassword ? <HiOutlineEyeSlash className="h-5 w-5" /> : <HiOutlineEye className="h-5 w-5" />}
+                </button>
+              </div>
+              {confirmPassword && confirmPassword !== form.password && <p className="mt-2 text-xs text-red-600">Passwords do not match.</p>}
+            </div>
 
             {type === "advice" ? (
               <>
