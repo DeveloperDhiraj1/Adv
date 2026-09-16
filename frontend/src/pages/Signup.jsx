@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
 import { HiOutlineUser, HiOutlineBriefcase } from "react-icons/hi2";
@@ -6,7 +6,7 @@ import Button from "../components/Button";
 import { signupSideImage } from "../assets/images";
 import { apiFetch } from "../lib/api";
 import { firebaseAuth } from "../lib/firebase";
-import { createUserWithEmailAndPassword, sendEmailVerification, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, GoogleAuthProvider, getRedirectResult, signInWithRedirect } from "firebase/auth";
 
 export default function Signup() {
   const [type, setType] = useState("advice");
@@ -21,6 +21,29 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
+
+  const finishGoogleSignup = async (credential) => {
+    const result = await apiFetch("/auth/firebase-login", {
+      method: "POST",
+      body: JSON.stringify({
+        firebaseIdToken: await credential.user.getIdToken(),
+        role: localStorage.getItem("pendingGoogleRole") || "USER",
+      }),
+    });
+    localStorage.removeItem("pendingGoogleRole");
+    localStorage.setItem("token", result.token);
+    localStorage.setItem("userRole", result.role || "USER");
+    localStorage.setItem("userId", result.userId);
+    localStorage.setItem("userName", result.userName);
+    localStorage.setItem("userEmail", result.email);
+    navigate(result.role === "EXPERT" ? "/expert-dashboard" : "/dashboard");
+  };
+
+  useEffect(() => {
+    getRedirectResult(firebaseAuth)
+      .then((credential) => credential && finishGoogleSignup(credential))
+      .catch((err) => setError(err.message || "Google sign-up failed"));
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -73,20 +96,8 @@ export default function Signup() {
     setLoading(true);
     setError("");
     try {
-      const credential = await signInWithPopup(firebaseAuth, new GoogleAuthProvider());
-      const result = await apiFetch("/auth/firebase-login", {
-        method: "POST",
-        body: JSON.stringify({
-          firebaseIdToken: await credential.user.getIdToken(),
-          role: type === "expert" ? "EXPERT" : "USER",
-        }),
-      });
-      localStorage.setItem("token", result.token);
-      localStorage.setItem("userRole", result.role || "USER");
-      localStorage.setItem("userId", result.userId);
-      localStorage.setItem("userName", result.userName);
-      localStorage.setItem("userEmail", result.email);
-      navigate(result.role === "EXPERT" ? "/expert-dashboard" : "/dashboard");
+      localStorage.setItem("pendingGoogleRole", type === "expert" ? "EXPERT" : "USER");
+      await signInWithRedirect(firebaseAuth, new GoogleAuthProvider());
     } catch (err) {
       setError(err.message || "Google sign-up failed");
     } finally {

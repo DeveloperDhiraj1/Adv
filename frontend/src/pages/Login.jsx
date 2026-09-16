@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
 import { HiOutlineEnvelope, HiOutlineLockClosed } from "react-icons/hi2";
@@ -6,13 +6,32 @@ import Button from "../components/Button";
 import { loginSideImage } from "../assets/images";
 import { apiFetch } from "../lib/api";
 import { firebaseAuth } from "../lib/firebase";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, getRedirectResult, signInWithRedirect } from "firebase/auth";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  const finishGoogleLogin = async (credential) => {
+    const result = await apiFetch("/auth/firebase-login", {
+      method: "POST",
+      body: JSON.stringify({ firebaseIdToken: await credential.user.getIdToken() }),
+    });
+    localStorage.setItem("token", result.token);
+    localStorage.setItem("userRole", result.role || "USER");
+    localStorage.setItem("userId", result.userId);
+    localStorage.setItem("userName", result.userName);
+    localStorage.setItem("userEmail", result.email);
+    navigate(result.role === "EXPERT" ? "/expert-dashboard" : result.role === "ADMIN" ? "/admin" : "/dashboard");
+  };
+
+  useEffect(() => {
+    getRedirectResult(firebaseAuth)
+      .then((credential) => credential && finishGoogleLogin(credential))
+      .catch((err) => setError(err.message || "Google sign-in failed"));
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,17 +42,7 @@ export default function Login() {
     setLoading(true);
     setError("");
     try {
-      const credential = await signInWithPopup(firebaseAuth, new GoogleAuthProvider());
-      const result = await apiFetch("/auth/firebase-login", {
-        method: "POST",
-        body: JSON.stringify({ firebaseIdToken: await credential.user.getIdToken() }),
-      });
-      localStorage.setItem("token", result.token);
-      localStorage.setItem("userRole", result.role || "USER");
-      localStorage.setItem("userId", result.userId);
-      localStorage.setItem("userName", result.userName);
-      localStorage.setItem("userEmail", result.email);
-      navigate(result.role === "EXPERT" ? "/expert-dashboard" : result.role === "ADMIN" ? "/admin" : "/dashboard");
+      await signInWithRedirect(firebaseAuth, new GoogleAuthProvider());
     } catch (err) {
       setError(err.message || "Google sign-in failed");
     } finally {
