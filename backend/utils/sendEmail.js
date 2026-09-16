@@ -14,6 +14,9 @@ export const sendEmail = async (options) => {
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port,
+    // Some Render instances do not have IPv6 egress. Gmail can resolve to an
+    // IPv6 address first, so force Nodemailer to use the reachable IPv4 route.
+    family: 4,
     // Port 465 expects implicit TLS; 587 normally starts with STARTTLS.
     secure: port === 465,
     requireTLS: port === 587,
