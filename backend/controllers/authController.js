@@ -5,10 +5,12 @@ import { sendEmail } from '../utils/sendEmail.js';
 
 
 export const signup = async (req, res) => {
+    let user;
+
     try {
         const { name, email, password, role } = req.body;
 
-        let user = await User.findOne({ email });
+        user = await User.findOne({ email });
         if (user) {
             return res.status(400).json({ success: false, message: "User already exists" });
         }
@@ -45,8 +47,19 @@ export const signup = async (req, res) => {
         });
 
     } catch (error) {
+        // Do not leave an unusable account behind when SMTP fails. This also
+        // allows the same email address to retry signup after SMTP is fixed.
+        if (user?._id && !user.isEmailVerified) {
+            await User.deleteOne({ _id: user._id }).catch((cleanupError) => {
+                console.error("Signup cleanup Error:", cleanupError.message);
+            });
+        }
+
         console.error("Signup Error:", error);
-        return res.status(500).json({ success: false, message: "Internal server error" });
+        return res.status(502).json({
+            success: false,
+            message: "OTP email could not be sent. Please try again later."
+        });
     }
 };
 

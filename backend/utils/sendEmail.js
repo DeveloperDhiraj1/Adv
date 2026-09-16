@@ -1,10 +1,22 @@
 import nodemailer from 'nodemailer';
 
 export const sendEmail = async (options) => {
+  const port = Number(process.env.EMAIL_PORT || 587);
+
+  if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error('Email configuration is missing. Set EMAIL_HOST, EMAIL_PORT, EMAIL_USER and EMAIL_PASS.');
+  }
+
+  if (!Number.isInteger(port) || port <= 0) {
+    throw new Error('EMAIL_PORT must be a valid number.');
+  }
+
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: false,
+    port,
+    // Port 465 expects implicit TLS; 587 normally starts with STARTTLS.
+    secure: port === 465,
+    requireTLS: port === 587,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
