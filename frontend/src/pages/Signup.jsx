@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
 import { HiOutlineUser, HiOutlineBriefcase } from "react-icons/hi2";
@@ -21,6 +21,7 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
+  const googleSignupHandled = useRef(false);
 
   const finishGoogleSignup = async (credential) => {
     const result = await apiFetch("/auth/firebase-login", {
@@ -40,9 +41,19 @@ export default function Signup() {
   };
 
   useEffect(() => {
-    getRedirectResult(firebaseAuth)
-      .then((credential) => credential && finishGoogleSignup(credential))
-      .catch((err) => setError(err.message || "Google sign-up failed"));
+    const complete = async (user) => {
+      if (!user || googleSignupHandled.current || !user.providerData.some(({ providerId }) => providerId === "google.com")) return;
+      googleSignupHandled.current = true;
+      try {
+        await finishGoogleSignup({ user });
+      } catch (err) {
+        setError(err.message || "Google sign-up failed");
+      }
+    };
+
+    const unsubscribe = firebaseAuth.onAuthStateChanged(complete);
+    getRedirectResult(firebaseAuth).then((credential) => credential && complete(credential.user)).catch((err) => setError(err.message || "Google sign-up failed"));
+    return unsubscribe;
   }, []);
 
   const handleChange = (e) => {
