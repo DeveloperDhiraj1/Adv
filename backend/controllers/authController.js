@@ -1,14 +1,21 @@
 import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { sendEmail } from '../utils/sendEmail.js';
+import { getFirebaseAdminAuth } from '../config/firebaseAdmin.js';
 
 
 export const signup = async (req, res) => {
-    let user;
-
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, firebaseUid, firebaseIdToken } = req.body;
+
+        if (!firebaseUid || !firebaseIdToken) {
+            return res.status(400).json({ success: false, message: "Firebase verification is required" });
+        }
+
+        const firebaseUser = await getFirebaseAdminAuth().verifyIdToken(firebaseIdToken);
+        if (firebaseUser.uid !== firebaseUid || firebaseUser.email?.toLowerCase() !== email?.toLowerCase()) {
+            return res.status(401).json({ success: false, message: "Invalid Firebase account" });
+        }
 
         user = await User.findOne({ email });
         if (user) {
@@ -19,85 +26,57 @@ export const signup = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
 
         
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpires = Date.now() + 10 * 60 * 1000; 
-
-        user = new User({
+        const user = new User({
             name,
             email,
             password: hashedPassword,
             role,
-            otp,
-            otpExpires,
-            isVerified: false
+            firebaseUid,
+            isEmailVerified: Boolean(firebaseUser.email_verified)
         });
 
         await user.save();
 
-        
-        await sendEmail({
-            email: user.email,
-            subject: 'Email Verification OTP',
-            message: `Your OTP for email verification is: ${otp}. It will expire in 10 minutes.`
-        });
-
         return res.status(201).json({
             success: true,
-            message: "User registered successfully. Please check your email for the verification OTP."
+            message: "Account created. Please verify your email before logging in."
         });
 
     } catch (error) {
-        // Do not leave an unusable account behind when SMTP fails. This also
-        // allows the same email address to retry signup after SMTP is fixed.
-        if (user?._id && !user.isEmailVerified) {
-            await User.deleteOne({ _id: user._id }).catch((cleanupError) => {
-                console.error("Signup cleanup Error:", cleanupError.message);
-            });
-        }
-
         console.error("Signup Error:", error);
-        return res.status(502).json({
-            success: false,
-            message: "OTP email could not be sent. Please try again later."
-        });
+        return res.status(500).json({ success: false, message: "Unable to create account" });
     }
 };
 
-
-// 2. Verify OTP (Updated)
-export const verifyOtp = async (req, res) => {
+export const verifyFirebaseEmail = async (req, res) => {
     try {
-        const { email, otp } = req.body;
+        const authHeader = req.headers.authorization || '';
+        const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        if (!idToken) {
+            return res.status(401).json({ success: false, message: "Firebase token is required" });
+        }
 
-        const user = await User.findOne({ email });
+        const firebaseUser = await getFirebaseAdminAuth().verifyIdToken(idToken, true);
+        if (!firebaseUser.email_verified) {
+            return res.status(400).json({ success: false, message: "Please click the verification link in your email first" });
+        }
+
+        const user = await User.findOne({ firebaseUid: firebaseUser.uid });
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
 
-        // Dono check laga diye taaki confusion na ho
-        if (user.isVerified || user.isEmailVerified) {
-            return res.status(400).json({ success: false, message: "Email is already verified" });
-        }
-
-        if (user.otp !== otp || user.otpExpires < Date.now()) {
-            return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
-        }
-
-        // Dono fields ko true set kar rahe hain taaki error na aaye
-        user.isVerified = true;
         user.isEmailVerified = true;
-        user.otp = undefined;
-        user.otpExpires = undefined;
         await user.save();
 
         return res.status(200).json({
             success: true,
-            message: "Email verified successfully! You can now log in."
+            message: "Email verified successfully. You can now log in."
         });
 
     } catch (error) {
-        console.error("Verify OTP Error:", error);
-        return res.status(500).json({ success: false, message: "Internal server error" });
+        console.error("Firebase verification Error:", error.message);
+        return res.status(401).json({ success: false, message: "Firebase verification failed" });
     }
 };
 

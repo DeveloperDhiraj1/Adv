@@ -5,6 +5,8 @@ import { HiOutlineUser, HiOutlineBriefcase } from "react-icons/hi2";
 import Button from "../components/Button";
 import { signupSideImage } from "../assets/images";
 import { apiFetch } from "../lib/api";
+import { firebaseAuth } from "../lib/firebase";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 
 export default function Signup() {
   const [type, setType] = useState("advice");
@@ -37,15 +39,31 @@ export default function Signup() {
         role: type === "expert" ? "EXPERT" : "USER",
       };
 
+      const firebaseCredential = await createUserWithEmailAndPassword(
+        firebaseAuth,
+        form.email,
+        form.password,
+      );
+      await sendEmailVerification(firebaseCredential.user);
+      const firebaseIdToken = await firebaseCredential.user.getIdToken();
+
       const result = await apiFetch("/auth/signup", {
         method: "POST",
-        body: JSON.stringify(payload),
+        headers: { Authorization: `Bearer ${firebaseIdToken}` },
+        body: JSON.stringify({
+          ...payload,
+          firebaseUid: firebaseCredential.user.uid,
+          firebaseIdToken,
+        }),
       });
 
       setSuccess(result.message || "Account created successfully.");
       navigate("/verify-otp", { state: { email: form.email } });
     } catch (err) {
-      setError(err.message || "Signup failed");
+      const message = err.code === "auth/email-already-in-use"
+        ? "This email is already registered. Please log in."
+        : err.message || "Signup failed";
+      setError(message);
     } finally {
       setLoading(false);
     }
