@@ -1,8 +1,28 @@
 import { Link } from "react-router-dom";
-import { HiArrowRight } from "react-icons/hi2";
+import {
+  HiArrowRight,
+  HiOutlineAcademicCap,
+  HiOutlineBriefcase,
+  HiOutlineBuildingOffice2,
+  HiOutlineChartBar,
+  HiOutlineHeart,
+  HiOutlineScale,
+  HiOutlineTag,
+} from "react-icons/hi2";
+
+const iconMap = {
+  career: HiOutlineBriefcase,
+  therapy: HiOutlineHeart,
+  investment: HiOutlineChartBar,
+  exams: HiOutlineAcademicCap,
+  legal: HiOutlineScale,
+  business: HiOutlineBuildingOffice2,
+};
 
 export default function CategoryCard({ category, dark = false }) {
-  const Icon = category.icon;
+  // Backend stores icon as text/URL, while React needs a component.
+  // Always use a valid icon component so an empty icon field cannot crash the app.
+  const Icon = iconMap[category.slug] || HiOutlineTag;
 
   if (dark) {
     return (
