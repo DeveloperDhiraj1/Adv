@@ -19,6 +19,8 @@ import disputeRoutes from './routes/disputeRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import payoutRoutes from './routes/payoutRoutes.js';
 import adminFilterRoutes from './routes/adminFilterRoutes.js';
+import publicRoutes from './routes/publicRoutes.js';
+import favoriteRoutes from './routes/favoriteRoutes.js';
 
 const app = express();
 
@@ -39,7 +41,7 @@ const isAllowedOrigin = (origin) => {
   if (!origin) return true;
   if (fixedAllowedOrigins.includes(origin) || configuredOrigins.includes(origin)) return true;
 
-  // Allow this project's Vercel preview deployments, e.g. adv-<hash>-<team>.vercel.app.
+  // Allow this project's Vercel preview deployments
   return /^https:\/\/adv-[a-z0-9-]+\.vercel\.app$/i.test(origin);
 };
 
@@ -86,5 +88,7 @@ app.use('/disputes', disputeRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/payouts', payoutRoutes);
 app.use('/admin/filter', adminFilterRoutes);
+app.use('/public', publicRoutes);
+app.use('/favorites', favoriteRoutes);
 
 export default app;

@@ -39,6 +39,7 @@ export default function Booking() {
   const [error, setError] = useState("");
   const [availableDays, setAvailableDays] = useState([]);
   const [availableTimes, setAvailableTimes] = useState([]);
+  const [timesByDay, setTimesByDay] = useState({});
 
   const [dayIdx, setDayIdx] = useState(0);
   const [timeIdx, setTimeIdx] = useState(0);
@@ -64,17 +65,17 @@ export default function Booking() {
           id: service._id,
           serviceId: service._id,
           expertId,
-          name: service.expertId?.headline || "Expert",
+          name: service.expertId?.userId?.name || service.expertId?.headline || "Expert",
           title: service.title,
           category: service.categoryId?.name || "General",
           photo:
             "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=80",
-          rating: service.expertId?.rating || 4.8,
-          years: service.expertId?.experienceYears || 5,
+          rating: Number(service.expertId?.rating || 0),
+          years: Number(service.expertId?.experienceYears || 0),
           location: "India",
           languages: service.expertId?.languages || ["English"],
-          verified: true,
-          available: true,
+          verified: Boolean(service.expertId?.isVerified),
+          available: service.status === "ACTIVE",
           bio: service.description,
           expertise: [service.title],
           education: [],
@@ -102,16 +103,16 @@ export default function Booking() {
           const days = getNextSevenDays();
           const daysWithAvail = days.filter((day) => availByDay[day.dayOfWeek]);
           setAvailableDays(daysWithAvail);
+          setTimesByDay(availByDay);
 
           // Set available times for first day
           if (daysWithAvail.length > 0) {
             setAvailableTimes(availByDay[daysWithAvail[0].dayOfWeek] || []);
           }
         } catch (err) {
-          console.error("Failed to load availability, using fallback", err);
-          // Fallback: show all days with default times
-          setAvailableDays(getNextSevenDays());
-          setAvailableTimes(["09:00", "10:00", "14:00", "15:00", "17:00", "18:00"]);
+          console.error("Failed to load availability", err);
+          setAvailableDays([]);
+          setAvailableTimes([]);
         }
       } catch (err) {
         setError(err.message || "Failed to load booking details.");
@@ -131,7 +132,7 @@ export default function Booking() {
   const handleDayChange = (newDayIdx) => {
     setDayIdx(newDayIdx);
     const newDayOfWeek = availableDays[newDayIdx].dayOfWeek;
-    // Load times for this day (simplified - in real app would fetch per day)
+    setAvailableTimes(timesByDay[newDayOfWeek] || []);
     setTimeIdx(0);
   };
 

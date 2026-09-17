@@ -63,7 +63,7 @@ image is used.
 - Privacy Policy / Terms placeholder pages, 404 page
 
 ## Notes
-- All data (experts, categories, testimonials, bookings, etc.) is static
-  sample data in `src/data/` -- wire this up to your real API/backend.
-- Forms (login, signup, contact, booking) call `e.preventDefault()` and
-  don't submit anywhere yet -- hook them up to your backend as needed.
+- Experts, services, categories, bookings, payments, reviews, dashboards,
+  favorites, contact messages and newsletter subscriptions use the backend API.
+- `src/data/content.js` still contains presentational marketing copy such as
+  testimonials and the “how it works” steps; these can be moved to a CMS later.

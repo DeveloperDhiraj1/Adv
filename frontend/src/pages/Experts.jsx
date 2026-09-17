@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { HiOutlineMagnifyingGlass } from "react-icons/hi2";
 import ExpertCard from "../components/ExpertCard";
 import Badge from "../components/Badge";
-import categories from "../data/categories";
 import { apiFetch } from "../lib/api";
 
 const sortOptions = [
@@ -19,26 +18,28 @@ export default function Experts() {
   const [query, setQuery] = useState("");
   const [experts, setExperts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     const fetchExperts = async () => {
       setLoading(true);
       try {
-        const data = await apiFetch("/services");
+        const [data, categoryResult] = await Promise.all([apiFetch("/services?limit=100"), apiFetch("/categories")]);
+        setCategories(categoryResult?.data || []);
         const items = (data?.data || []).map((service) => ({
           id: service._id,
-          name: service.expertId?.headline || "Expert",
+          name: service.expertId?.userId?.name || service.expertId?.headline || "Expert",
           title: service.title,
           category: service.categoryId?.name || "General",
           photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=80",
-          rating: service.expertId?.rating || 4.8,
-          years: service.expertId?.experienceYears || 5,
-          sessions: 800,
+          rating: Number(service.expertId?.rating || 0),
+          years: Number(service.expertId?.experienceYears || 0),
+          sessions: Number(service.expertId?.totalReviews || 0),
           price: service.price || 0,
           location: "India",
           languages: service.expertId?.languages || ["English"],
-          verified: true,
-          available: true,
+          verified: Boolean(service.expertId?.isVerified),
+          available: service.status === "ACTIVE",
           bio: service.description,
           expertise: [service.title],
           education: [],

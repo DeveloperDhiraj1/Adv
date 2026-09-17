@@ -44,6 +44,10 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    favoriteServices: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Service'
+    }],
     otp: {
         type: String
     },

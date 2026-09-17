@@ -16,7 +16,6 @@ import SectionHeading from "../components/SectionHeading";
 import CategoryCard from "../components/CategoryCard";
 import ExpertCard from "../components/ExpertCard";
 import TestimonialCard from "../components/TestimonialCard";
-import categories from "../data/categories";
 import { howItWorks, whyChooseUs, testimonials } from "../data/content";
 import { heroImage, trustedLogos } from "../assets/images";
 import { apiFetch } from "../lib/api";
@@ -41,20 +40,22 @@ const stats = [
 export default function Home() {
   const [experts, setExperts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     const loadExperts = async () => {
       try {
-        const result = await apiFetch("/services?limit=6");
+        const [result, categoryResult] = await Promise.all([apiFetch("/services?limit=6"), apiFetch("/categories")]);
+        setCategories(categoryResult?.data || []);
         const items = (result?.data || []).map((service) => ({
           id: service._id,
-          name: service.expertId?.headline || "Expert",
+          name: service.expertId?.userId?.name || service.expertId?.headline || "Expert",
           title: service.title,
           category: service.categoryId?.name || "General",
           photo: FALLBACK_PHOTO,
           rating: service.expertId?.rating || 0,
           years: service.expertId?.experienceYears || 0,
-          sessions: 0,
+          sessions: Number(service.expertId?.totalReviews || 0),
           price: service.price || 0,
           location: "India",
           languages: service.expertId?.languages || ["English"],

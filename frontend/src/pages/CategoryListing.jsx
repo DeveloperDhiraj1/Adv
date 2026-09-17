@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, Navigate } from "react-router-dom";
 import { HiOutlineMagnifyingGlass } from "react-icons/hi2";
 import ExpertCard from "../components/ExpertCard";
-import staticCategories from "../data/categories";
 import { apiFetch } from "../lib/api";
 
 const FALLBACK_PHOTO =
@@ -13,39 +12,21 @@ export default function CategoryListing() {
   const [query, setQuery] = useState("");
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // The category metadata (name/description/icon) is presentational and
-  // stays static; the actual experts/services come from the backend.
-  const category = staticCategories.find((c) => c.slug === slug);
+  const [category, setCategory] = useState(null);
 
   useEffect(() => {
-    if (!category) return;
     let cancelled = false;
 
     const load = async () => {
       setLoading(true);
       try {
-        // Backend categories are seeded independently of the static
-        // category list, so resolve the real category id by name first.
         const categoryResult = await apiFetch("/categories");
-        const matchedCategory = (categoryResult?.data || []).find(
-          (c) => c.name?.toLowerCase() === category.name.toLowerCase()
-        );
+        const matchedCategory = (categoryResult?.data || []).find((c) => c.slug === slug);
+        if (!matchedCategory) { setCategory(null); return; }
+        setCategory(matchedCategory);
 
-        let items = [];
-        if (matchedCategory) {
-          const serviceResult = await apiFetch(
-            `/services?category=${matchedCategory._id}&limit=50`
-          );
-          items = serviceResult?.data || [];
-        } else {
-          // Fallback: fetch all services and filter client-side by
-          // populated category name, in case the id lookup didn't match.
-          const serviceResult = await apiFetch("/services?limit=50");
-          items = (serviceResult?.data || []).filter(
-            (s) => s.categoryId?.name?.toLowerCase() === category.name.toLowerCase()
-          );
-        }
+        const serviceResult = await apiFetch(`/services?category=${matchedCategory._id}&limit=50`);
+        const items = serviceResult?.data || [];
 
         if (!cancelled) setServices(items);
       } catch (err) {
@@ -59,19 +40,19 @@ export default function CategoryListing() {
     return () => {
       cancelled = true;
     };
-  }, [category]);
+  }, [slug]);
 
   const mapped = useMemo(
     () =>
       services.map((service) => ({
         id: service._id,
-        name: service.expertId?.headline || "Expert",
+        name: service.expertId?.userId?.name || service.expertId?.headline || "Expert",
         title: service.title,
         category: service.categoryId?.name || category?.name || "General",
         photo: FALLBACK_PHOTO,
         rating: service.expertId?.rating || 0,
         years: service.expertId?.experienceYears || 0,
-        sessions: 0,
+        sessions: Number(service.expertId?.totalReviews || 0),
         price: service.price || 0,
         location: "India",
         languages: service.expertId?.languages || ["English"],

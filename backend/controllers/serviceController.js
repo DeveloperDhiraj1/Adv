@@ -48,7 +48,7 @@ export const getServices = async (req, res) => {
 
     let query = { status: 'ACTIVE' };
 
-    // Keyword search (Title ya Description mein)
+    // Keyword search 
     if (keyword) {
       query.$or = [
         { title: { $regex: keyword, $options: 'i' } },
@@ -72,7 +72,7 @@ export const getServices = async (req, res) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const services = await Service.find(query)
-      .populate('expertId', 'headline experienceYears rating languages')
+      .populate({ path: 'expertId', select: 'userId headline experienceYears rating languages isVerified totalReviews', populate: { path: 'userId', select: 'name email' } })
       .populate('categoryId', 'name')
       .skip(skip)
       .limit(Number(limit));
@@ -103,7 +103,7 @@ export const getServiceById = async (req, res) => {
     const { id } = req.params;
 
     const service = await Service.findById(id)
-      .populate('expertId')
+      .populate({ path: 'expertId', populate: { path: 'userId', select: 'name email' } })
       .populate('categoryId', 'name');
 
     if (!service) {

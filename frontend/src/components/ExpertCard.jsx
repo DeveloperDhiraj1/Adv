@@ -4,15 +4,26 @@ import RatingStars from "./RatingStars";
 import { VerifiedBadge, AvailabilityDot } from "./Badge";
 import Button from "./Button";
 import { isFavorite, toggleFavorite } from "../lib/favorites";
+import { apiFetch } from "../lib/api";
 
 export default function ExpertCard({ expert }) {
   const [favorite, setFavorite] = useState(() => isFavorite(expert.id));
 
-  const handleToggleFavorite = (e) => {
+  const handleToggleFavorite = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleFavorite(expert.id);
-    setFavorite((prev) => !prev);
+    const next = !favorite;
+    setFavorite(next);
+    try {
+      if (localStorage.getItem("token")) {
+        await apiFetch(`/favorites/${expert.id}`, { method: next ? "POST" : "DELETE" });
+      } else {
+        toggleFavorite(expert.id);
+      }
+    } catch {
+      setFavorite(!next);
+      toggleFavorite(expert.id);
+    }
   };
 
   return (

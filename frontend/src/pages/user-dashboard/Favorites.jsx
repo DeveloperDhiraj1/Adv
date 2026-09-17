@@ -13,32 +13,27 @@ export default function Favorites() {
 
   useEffect(() => {
     const load = async () => {
-      const favoriteIds = getFavoriteIds();
-      if (favoriteIds.length === 0) {
-        setLoading(false);
-        return;
-      }
-
       try {
-        const results = await Promise.all(
-          favoriteIds.map((id) =>
-            apiFetch(`/services/${id}`).catch(() => null)
-          )
-        );
+        let services = [];
+        if (localStorage.getItem("token")) {
+          const result = await apiFetch("/favorites");
+          services = result?.data || [];
+        } else {
+          const favoriteIds = getFavoriteIds();
+          const results = await Promise.all(favoriteIds.map((id) => apiFetch(`/services/${id}`).catch(() => null)));
+          services = results.filter(Boolean).map((r) => r.data).filter(Boolean);
+        }
 
-        const mapped = results
-          .filter(Boolean)
-          .map((r) => r.data)
-          .filter(Boolean)
+        const mapped = services
           .map((service) => ({
             id: service._id,
-            name: service.expertId?.headline || "Expert",
+            name: service.expertId?.userId?.name || service.expertId?.headline || "Expert",
             title: service.title,
             category: service.categoryId?.name || "General",
             photo: FALLBACK_PHOTO,
             rating: service.expertId?.rating || 0,
             years: service.expertId?.experienceYears || 0,
-            sessions: 0,
+            sessions: Number(service.expertId?.totalReviews || 0),
             price: service.price || 0,
             location: "India",
             languages: service.expertId?.languages || ["English"],

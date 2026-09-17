@@ -5,6 +5,8 @@ import {
 } from "react-icons/hi2";
 import { FaLinkedinIn, FaTwitter, FaInstagram } from "react-icons/fa";
 import Button from "./Button";
+import { useState } from "react";
+import { apiFetch } from "../lib/api";
 
 const sitemap = [
   { label: "Home", to: "/" },
@@ -21,6 +23,9 @@ const usefulLinks = [
 ];
 
 export default function Footer() {
+  const [email, setEmail] = useState("");
+  const [newsletterMessage, setNewsletterMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   return (
@@ -87,22 +92,36 @@ export default function Footer() {
               Get our best expert advice in your interested field.
             </p>
             <form
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setSubmitting(true);
+                setNewsletterMessage("");
+                try {
+                  const result = await apiFetch("/public/newsletter", { method: "POST", body: JSON.stringify({ email }) });
+                  setNewsletterMessage(result.message || "Subscribed successfully.");
+                  setEmail("");
+                } catch (error) { setNewsletterMessage(error.message || "Unable to subscribe."); }
+                finally { setSubmitting(false); }
+              }}
               className="mt-4 flex items-center gap-2"
             >
               <input
                 type="email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 className="w-full rounded-full border border-white/15 bg-card/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-emerald focus:outline-none"
               />
               <button
                 type="submit"
+                disabled={submitting}
                 className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-emerald text-navy transition-colors hover:bg-emerald-light"
                 aria-label="Subscribe"
               >
                 <HiOutlinePaperAirplane className="h-4 w-4" />
               </button>
+              {newsletterMessage && <p className="absolute mt-12 text-xs text-emerald-light">{newsletterMessage}</p>}
             </form>
           </div>
         </div>
